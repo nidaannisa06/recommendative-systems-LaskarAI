@@ -115,23 +115,58 @@ Dari visualisasi ini, terlihat bahwa Josei memiliki rata-rata rating tertinggi, 
 ### Data Preparation
 
 Berikut adalah teknik-teknik data preparation yang diterapkan dalam proyek ini:
-1. Penanganan Missing Values pada Kolom genre, name dan summary
-- Missing value di atas dengan metode dropna untuk kolom genre, name, summary
+1. Penanganan Missing Values pada Kolom Dataset
+- Jumlah missing value diperiksa pada tiap kolom
 ```python
-   # Memeriksa jumlah data duplikat df_anime
-   print("Jumlah data duplikat sebelum penanganan:", df_anime.duplicated().sum())
+# Memeriksa jumlah nilai yang hilang di setiap kolom
+print("Jumlah nilai yang hilang sebelum penanganan:")
+print(df_anime.isnull().sum())
 ```
-- Missing values pada kolom rating diisi dengan modus
+- Ada mising value yang harus diatasi pada kolom genre (62), type (52) dan rating (230).
+- Kolom genre dan type memiliki jumlah missing yang relatif sedikit, sehingga baris dengan nilai kosong pada kolom ini dihapus menggunakan .dropna().
+```python
+# Menghapus baris yang memiliki nilai yang hilang pada kolom 'genre', dan 'type'
+df_anime = df_anime.dropna(subset=['genre', 'type'])
+```
+- Kolom rating memiliki jumlah missing yang lebih besar dan berpotensi mempengaruhi analisis, sehingga nilai kosong diisi dengan modus (nilai rating yang paling sering muncul) menggunakan .fillna().
 ```python
 # Mengisi missing value di kolom rating dengan modus
 df_anime['rating'].fillna(df_anime['rating'].mode()[0], inplace=True)
 ```
-3. Penggabungan Data: Dataset anime.csv dan rating.csv digabungkan menggunakan kolom anime_id untuk menggabungkan informasi anime dengan rating pengguna.
+
+2. Pembersihan dan Konversi Kolom 'Episodes'
+- Pada tahap Data Preparation, ditemukan adanya nilai non-numerik pada kolom 'episodes' yang menghambat proses Exploratory Data Analysis (EDA), terutama saat mencoba membuat visualisasi atau perhitungan. Untuk mengatasi ini, dilakukan pembersihan data dengan mengidentifikasi nilai non-numerik dan mengubahnya menjadi NaN (Not a Number), kemudian baris yang tidak valid tersebut dihapus. Langkah ini memastikan kolom 'episodes' memiliki tipe data numerik yang konsisten, sehingga data siap untuk analisis dan pemodelan lebih lanjut."
+
+```python
+# Memeriksa tipe data kolom 'episodes'
+print("Tipe data kolom 'episodes' sebelum perbaikan:")
+print(df_anime['episodes'].dtype)
+
+# Memeriksa nilai non-numerik dalam kolom 'episodes'
+non_numeric_episodes = df_anime[pd.to_numeric(df_anime['episodes'], errors='coerce').isna()]['episodes'].unique()
+print("\nNilai non-numerik dalam kolom 'episodes':")
+print(non_numeric_episodes)
+
+# Mengubah nilai non-numerik menjadi NaN, lalu dikonversi menjadi numerik
+df_anime['episodes'] = pd.to_numeric(df_anime['episodes'], errors='coerce')
+
+# Drop nilai NaN yang mungkin muncul
+# df_anime['episodes'] = df_anime['episodes'].dropna()
+
+# Menghapus baris yang memiliki NaN di kolom 'episodes'
+df_anime = df_anime.dropna(subset=['episodes'])
+
+print("\nTipe data kolom 'episodes' setelah perbaikan:")
+print(df_anime['episodes'].dtype)
+```
+
+3. Penggabungan Data: Dataset anime.csv dan rating.csv digabungkan menggunakan kolom anime_id untuk menggabungkan informasi anime dengan rating yang diberikan pengguna. Hasil penggabungan ini menjadi dasar bagi model collaborative filtering.
 ```python
 # Menggabungkan data rating dengan data anime
 merged_df = pd.merge(df_rating, df_anime, on='anime_id', suffixes=['_user', '_anime'])
 ```
-4. Pra-pemrosesan Teks pada Kolom genre: Kolom genre diproses menggunakan tokenisasi, penghapusan stop words, dan TF-IDF untuk mengubah data tekstual menjadi representasi numerik yang sesuai untuk pemodelan. Sintaks yang digunakan:
+
+4. Pra-pemrosesan Teks pada Kolom genre: Kolom genre diproses untuk pendekatan content based filtering. Kolom ini diproses menggunakan tokenisasi, penghapusan stop words, dan TF-IDF untuk mengubah data tekstual menjadi representasi numerik yang sesuai untuk pemodelan. Sintaks yang digunakan:
 
 ```python
 # Pra-pemrosesan genre untuk Content-Based Filtering (Tokenisasi Dasar + Stop Words Removal)
